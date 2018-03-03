@@ -63,30 +63,47 @@ public class Main {
         return conn;
     }
 
-    public static void runTests(Connection conn, String index1, String index2){
+    public static void createNewTable(Connection connection, String index1, String index2) {
+        // SQLite connection string
+        // SQL statement for creating a new table
+        String sql = "CREATE TABLE IF NOT EXISTS, chisquare" + index1 + index2 + " (\n"
+                + "	id integer PRIMARY KEY,\n"
+                + "	id text NOT NULL,\n"
+                + "	id" + index1 + "integer,\n"
+                + " id" + index2 + "integer,\n"
+                + " pval real\n"
+                + ");";
+        try (Statement stmt = connection.createStatement()) {
+            // create a new table
+            stmt.execute(sql);
+        } catch (SQLException e) {
+            System.out.println(e.getMessage());
+        }
+    }
+
+    public static void runTests(Connection conn, String index1, String index2) {
         String sql1 = "SELECT id, ch, pos, ref, alt, info, humans FROM chrom" + index1;
         String sql2 = "SELECT id, ch, pos, ref, alt, info, humans FROM chrom" + index2;
 
-        try (Statement stmt  = conn.createStatement();
-             ResultSet rs1    = stmt.executeQuery(sql1))
-        {
-
+        try (Statement stmt1 = conn.createStatement();
+             Statement stmt2 = conn.createStatement()) {
+            ResultSet rs1 = stmt1.executeQuery(sql1);
             while (rs1.next()) {
                 String mutationName1 =
                         "ID=" + rs1.getInt("id")
-                        + ":"
-                        + Integer.toString(rs1.getInt("ch"))
-                        + ":"
-                        + Integer.toString(rs1.getInt("pos"))
-                        + ":"
-                        + rs1.getString("ref")
-                        + ":"
-                        + rs1.getString("alt")
-                        + "(" + rs1.getString("info") + ")";
+                                + ":"
+                                + Integer.toString(rs1.getInt("ch"))
+                                + ":"
+                                + Integer.toString(rs1.getInt("pos"))
+                                + ":"
+                                + rs1.getString("ref")
+                                + ":"
+                                + rs1.getString("alt")
+                                + "(" + rs1.getString("info") + ")";
 
                 String h1 = rs1.getString("humans");
 
-                ResultSet rs2 = stmt.executeQuery(sql2);
+                ResultSet rs2 = stmt2.executeQuery(sql2);
 
                 while (rs2.next()) {
                     String mutationName2 =
@@ -105,8 +122,8 @@ public class Main {
 
                     long[][] matrix = new long[3][3];
 
-                    for (int i = 0; i<h2.length(); i++){
-                        matrix[h1.charAt(i)-'0'][h2.charAt(i)-'0']++;
+                    for (int i = 0; i < h2.length(); i++) {
+                        matrix[h1.charAt(i) - '0'][h2.charAt(i) - '0']++;
                     }
 
                     /*
@@ -119,22 +136,22 @@ public class Main {
                     Double testResult = test.chiSquareTest(matrix);
 
                     GLOBAL_COUNTER++;
-                    if (TOTAL_LINES_TO_PROCCESS != 0){
-                        if (GLOBAL_COUNTER >= TOTAL_LINES_TO_PROCCESS){
+                    if (TOTAL_LINES_TO_PROCCESS != 0) {
+                        if (GLOBAL_COUNTER >= TOTAL_LINES_TO_PROCCESS) {
                             System.out.println(TOTAL_LINES_TO_PROCCESS + " pairs proceeded");
                             System.exit(1);
                         }
                     }
                     TIME_SOUT_COUNTER++;
 
-                    if (!testResult.isNaN()){
+                    if (!testResult.isNaN()) {
                         String result = (mutationName1 + " - "
-                            + mutationName2
-                            + ", p-value=" + Double.toString(testResult) + "\n");
+                                + mutationName2
+                                + ", p-value=" + Double.toString(testResult) + "\n");
                         writeResultsToFile(index1, index2, result);
                     }
 
-                    if (TIME_SOUT_COUNTER == TIME_SOUT_LIMIT){
+                    if (TIME_SOUT_COUNTER == TIME_SOUT_LIMIT) {
                         TIME_SOUT_COUNTER = 0;
                         writeWorkTime();
                     }
@@ -152,29 +169,38 @@ public class Main {
     private static void writeWorkTime() {
         System.out.println("-----");
         System.out.println("Lines: " + GLOBAL_COUNTER);
-        System.out.println("Seconds spent: " + Long.toString((System.currentTimeMillis() - startTime)/1000));
+        System.out.println("Seconds spent: " + Long.toString((System.currentTimeMillis() - startTime) / 1000));
     }
 
     private static void writeResultsToFile(String index1, String index2, String line) {
 
+        String sql = "INSERT INTO warehouses(name,capacity) VALUES(?,?)";
+
+        try (Connection conn = this.connect();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, name);
+            pstmt.setDouble(2, capacity);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            System.out.println(e.getMessage());
+        }
+
         System.out.println(line);
 
         BufferedWriter writer = null;
-        try
-        {
-            writer = new BufferedWriter( new FileWriter("ChiTestOut/ChiTestFor_ch" + index1 + "_ch" + index2 + ".txt", true));
+        try {
+            writer = new BufferedWriter(new FileWriter("ChiTestOut/ChiTestFor_ch" + index1 + "_ch" + index2 + ".txt", true));
             writer.write(line);
 
-        }
-        catch (IOException e) {e.printStackTrace();}
-        finally
-        {
-            try
-            {
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            try {
                 if (writer != null)
                     writer.close();
+            } catch (IOException e) {
+                e.printStackTrace();
             }
-            catch ( IOException e) {e.printStackTrace();}
         }
 
     }
